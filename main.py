@@ -21,7 +21,7 @@ def get_db_data(supabase: Client, table: str, limit: int) -> list[dict]:
 	if (
 		not isinstance(table, str) or not table.strip() or
 		not isinstance(limit, int) or limit <= 0 or
-		not isinstance(supabase, Client) or not supabase
+		not isinstance(supabase, Client)
 	):
 		raise ValueError("Invalid parameters: Check table name, limit, and Supabase client.")
 
@@ -81,7 +81,11 @@ def main() -> None:
 
 	# Connect to Supabase and fetch contacts
 	supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-	contacts = get_db_data(supabase, table, limit)
+	try:
+		contacts = get_db_data(supabase, table, limit)
+	except Exception as e:
+		print(f"Error fetching contacts: {e}")
+		return
 
 	# Z-API Calls
 	for contact in contacts:
@@ -95,6 +99,9 @@ def main() -> None:
 			send_whatsapp_message(ZAPI_INSTANCE_ID, ZAPI_TOKEN, phone, message)
 		except Exception as e:
 			print(f"Error sending message to {phone}: {e}")
+
+	print("All contacts have been processed.")
+
 
 if __name__ == "__main__":
 	try:
