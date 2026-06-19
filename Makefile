@@ -5,4 +5,4 @@ run: install
 
 install:
 	@echo "Installing dependencies..."
-	pip install -r requirements.txt
+	@pip install -q -r requirements.txt
