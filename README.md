@@ -11,10 +11,8 @@ A Python application that retrieves contacts from Supabase and sends personalize
 - ```pip install -r requirements.txt```
 - ```python3 main.py```   
 
-```Note:``` You can see all dependencies on ```requirements.txt```
-
 ## Env
-- I expect this ```.env``` config, please create one for your use
+- Create a `.env` file with the following variables:
 ```txt
 SUPABASE_URL=""
 SUPABASE_KEY=""

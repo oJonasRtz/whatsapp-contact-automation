@@ -1,28 +1,32 @@
 from dotenv import load_dotenv
-from supabase import create_client
+from supabase import create_client, Client
 import requests
 import os
 
 
-def get_db_date(supabase: create_client, table: str, limit: int) -> list[dict]:
+def get_db_data(supabase: Client, table: str, limit: int) -> list[dict]:
 	"""Fetches data from the specified table in the Supabase database.
 	Parameters:
-		supabase (create_client): The Supabase client.
+		supabase (Client): The Supabase client.
 		table (str): The name of the table to fetch data from.
 		limit (int): The maximum number of records to fetch.
 	Returns:
 		list[dict]: A list of contact dictionaries.
 	Raises:
-		ValueError: If the limit is not a positive integer.
+		ValueError: If the parameters are invalid.
 		Exception: If the API call fails.
 	"""
 
-	# Validate the limit parameter
-	if not isinstance(limit, int) or limit <= 0:
-		raise ValueError("Limit must be a positive integer.")
+	# Validate parameters
+	if (
+		not isinstance(table, str) or not table.strip() or
+		not isinstance(limit, int) or limit <= 0 or
+		not isinstance(supabase, Client) or not supabase
+	):
+		raise ValueError("Invalid parameters: Check table name, limit, and Supabase client.")
 
 	# Create a Supabase client and fetch contacts
-	res = supabase.table(table).select("*").limit(limit).execute()
+	res = supabase.table(table.strip()).select("*").limit(limit).execute()
 
 	# Error handling for the response
 	if hasattr(res, "error") and res.error:
@@ -46,19 +50,20 @@ def send_whatsapp_message(instance_id: str, token: str, to: str, message: str) -
 	"""
 
 	# Validate input parameters
-	if not isinstance(instance_id, str) or not isinstance(token, str) or not isinstance(to, str) or not isinstance(message, str):
-		raise ValueError("All parameters must be strings.")
-	
-	url = f"https://api.z-api.io/instances/{instance_id}/token/{token}/send-text"
+	for param in [instance_id, token, to, message]:
+		if not isinstance(param, str) or not param.strip():
+			raise ValueError("All parameters must be strings and cannot be empty.")
+
+	url = f"https://api.z-api.io/instances/{instance_id.strip()}/token/{token.strip()}/send-text"
 	payload = {
-		"phone": to,
-		"message": message
+		"phone": to.strip(),
+		"message": message.strip()
 	}
 
-	res = requests.post(url, json=payload)
+	res = requests.post(url, json=payload, timeout=10)
 
 	if res.status_code != 200:
-		raise Exception(f"Failed to send message: {res.text}")
+		raise Exception(res.text)
 
 
 def main() -> None:
@@ -76,14 +81,20 @@ def main() -> None:
 
 	# Connect to Supabase and fetch contacts
 	supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-	contacts = get_db_date(supabase, table, limit)
+	contacts = get_db_data(supabase, table, limit)
 
 	# Z-API Calls
 	for contact in contacts:
-		to = contact.get("phone")
-		message = f"Olá {contact.get('name')}, tudo bem com voce?"
-		send_whatsapp_message(ZAPI_INSTANCE_ID, ZAPI_TOKEN, to, message)
-
+		phone = contact.get("phone")
+		name = contact.get("name")
+		if not phone or not name:
+			print(f"Skipping contact with missing phone or name: {contact}")
+			continue
+		try:
+			message = f"Olá, {name} tudo bem com você?"
+			send_whatsapp_message(ZAPI_INSTANCE_ID, ZAPI_TOKEN, phone, message)
+		except Exception as e:
+			print(f"Error sending message to {phone}: {e}")
 
 if __name__ == "__main__":
 	main()
