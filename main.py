@@ -2,7 +2,6 @@ from dotenv import load_dotenv
 from supabase import create_client
 import requests
 import os
-import sys
 
 
 def get_db_date(supabase: create_client, table: str, limit: int) -> list[dict]:
@@ -13,7 +12,11 @@ def get_db_date(supabase: create_client, table: str, limit: int) -> list[dict]:
 		limit (int): The maximum number of records to fetch.
 	Returns:
 		list[dict]: A list of contact dictionaries.
+	Raises:
+		ValueError: If the limit is not a positive integer.
+		Exception: If the API call fails.
 	"""
+
 	# Validate the limit parameter
 	if not isinstance(limit, int) or limit <= 0:
 		raise ValueError("Limit must be a positive integer.")
@@ -22,13 +25,26 @@ def get_db_date(supabase: create_client, table: str, limit: int) -> list[dict]:
 	res = supabase.table(table).select("*").limit(limit).execute()
 
 	# Error handling for the response
-	# if res.status_code != 200:
-	# 	raise Exception(f"Error fetching contacts from Supabase: {res.text}")
+	if hasattr(res, "error") and res.error:
+		raise Exception(f"Error fetching contacts from Supabase: {res.error}")
 
-	return res.data
+	return res.data or []
 
 
 def send_whatsapp_message(instance_id: str, token: str, to: str, message: str) -> None:
+	"""Sends a WhatsApp message using the Z-API.
+	Parameters:
+		instance_id (str): The Z-API instance ID.
+		token (str): The Z-API token.
+		to (str): The recipient's phone number.
+		message (str): The message to send.
+	Returns:
+		None
+	Raises:
+		ValueError: If any of the parameters are not strings.
+		Exception: If the API call fails.
+	"""
+
 	# Validate input parameters
 	if not isinstance(instance_id, str) or not isinstance(token, str) or not isinstance(to, str) or not isinstance(message, str):
 		raise ValueError("All parameters must be strings.")
@@ -45,7 +61,7 @@ def send_whatsapp_message(instance_id: str, token: str, to: str, message: str) -
 		raise Exception(f"Failed to send message: {res.text}")
 
 
-def main(args: list[str]) -> None:
+def main() -> None:
 	limit = 3
 	table = "contacts"
 
@@ -70,4 +86,4 @@ def main(args: list[str]) -> None:
 
 
 if __name__ == "__main__":
-	main(sys.argv[1:])
+	main()
